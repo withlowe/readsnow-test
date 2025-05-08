@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
 import { Rss } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
@@ -36,8 +36,6 @@ type WebsiteItemProps = {
 }
 
 export function WebsiteItem({ website, onDelete, onUpdate, compact = false }: WebsiteItemProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-
   const hostname = (() => {
     try {
       return new URL(website.url).hostname.replace(/^www\./, "")
@@ -68,25 +66,54 @@ export function WebsiteItem({ website, onDelete, onUpdate, compact = false }: We
     return website.mainContent || ""
   }
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on buttons
+    if ((e.target as HTMLElement).closest("button")) {
+      e.preventDefault()
+      return
+    }
+
+    // Ensure the URL is properly formatted
+    let url = website.url || ""
+
+    // Add https:// if missing
+    if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+      url = `https://${url}`
+    }
+
+    // Only navigate if we have a valid URL
+    if (url) {
+      // Use window.open to open in a new tab
+      window.open(url, "_blank", "noopener,noreferrer")
+
+      // Prevent default to avoid any navigation in the current tab
+      e.preventDefault()
+    }
+  }
+
   // If this is a compact view (for bookmarks page), render a simplified version
   if (compact) {
     return (
-      <div className="py-2 flex items-center justify-between border-b">
+      <div
+        className="py-2 flex items-center justify-between border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900"
+        onClick={handleClick}
+      >
         <div className="flex-1 min-w-0">
           <div className="flex items-center">
             {website.isRssFeed && <Rss className="h-3 w-3 mr-1 text-orange-500" />}
-            <a
-              href={website.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium hover:underline truncate"
-            >
-              {website.title}
-            </a>
+            <span className="font-medium truncate">{website.title}</span>
           </div>
           <div className="text-xs text-muted-foreground truncate">{hostname}</div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onDelete} className="ml-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          className="ml-2"
+        >
           <Trash2 className="h-4 w-4" />
           <span className="sr-only">Delete</span>
         </Button>
@@ -95,46 +122,32 @@ export function WebsiteItem({ website, onDelete, onUpdate, compact = false }: We
   }
 
   return (
-    <article className="border-b pb-6 group">
-      <a href={website.url} target="_blank" rel="noopener noreferrer" className="block cursor-pointer">
-        <div className="flex items-center text-sm text-muted-foreground mb-2">
-          <span className="font-medium text-foreground flex items-center">
-            {website.isRssFeed && <Rss className="h-3 w-3 mr-1 text-orange-500" />}
-            {hostname}
-          </span>
+    <article
+      className="border-b pb-6 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 p-2 rounded-md transition-colors"
+      onClick={handleClick}
+    >
+      <div className="flex items-center text-sm text-muted-foreground mb-2">
+        <span className="font-medium text-foreground flex items-center">
+          {website.isRssFeed && <Rss className="h-3 w-3 mr-1 text-orange-500" />}
+          {hostname}
+        </span>
+      </div>
+
+      <h2 className="text-xl font-semibold mb-2 group-hover:underline">{website.title}</h2>
+
+      {website.isRssFeed && website.feedItems && website.feedItems.length > 0 ? (
+        <div className="space-y-3 mt-3">
+          {website.feedItems.map((item, index) => (
+            <div key={index} className="border-l-2 border-primary/20 pl-3">
+              <h3 className="font-medium">{item.title}</h3>
+            </div>
+          ))}
         </div>
-
-        <h2 className="text-xl font-semibold mb-2 group-hover:underline">{website.title}</h2>
-
-        {website.isRssFeed && website.feedItems && website.feedItems.length > 0 ? (
-          <div className="space-y-3 mt-3">
-            {website.feedItems.slice(0, isExpanded ? undefined : 3).map((item, index) => (
-              <div key={index} className="border-l-2 border-primary/20 pl-3">
-                <h3 className="font-medium">{item.title}</h3>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className={`prose prose-sm dark:prose-invert max-w-none ${!isExpanded && "line-clamp-6"}`}>
-            <p>{getContentDifference()}</p>
-          </div>
-        )}
-
-        {((website.mainContent && website.mainContent.length > 300) ||
-          (website.isRssFeed && website.feedItems && website.feedItems.length > 3)) && (
-          <Button
-            variant="link"
-            className="px-0 h-auto text-sm mt-2"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setIsExpanded(!isExpanded)
-            }}
-          >
-            {isExpanded ? "Show less" : "Show more"}
-          </Button>
-        )}
-      </a>
+      ) : (
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <p>{getContentDifference()}</p>
+        </div>
+      )}
     </article>
   )
 }

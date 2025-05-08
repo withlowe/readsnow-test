@@ -96,7 +96,6 @@ export function AddWebsiteDialog({ open, onOpenChange, onWebsiteAdded }: AddWebs
 
       toast({
         title: websiteData.isRssFeed ? "RSS Feed added" : "Website added",
-        description: `Your ${websiteData.isRssFeed ? "RSS feed" : "website"} has been added to your feed`,
       })
 
       // Reset form

@@ -128,7 +128,7 @@ export default function BookmarksPage() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 ml-16">
+      <main className="flex-1 md:ml-16 ml-0 pb-16 md:pb-0">
         <div className="max-w-2xl mx-auto px-4 py-6">
           <div className="flex items-center mb-8">
             <div className="flex items-center">

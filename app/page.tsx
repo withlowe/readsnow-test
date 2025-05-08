@@ -6,12 +6,14 @@ import { AuthForm } from "@/components/auth-form"
 import { ContentFeed } from "@/components/content-feed"
 import { Sidebar } from "@/components/sidebar"
 import { useUserbase } from "@/components/userbase-provider"
+import { DebugPanel } from "@/components/debug-panel"
 
 export default function Home() {
   const { user, loading } = useUserbase()
   const [isClient, setIsClient] = useState(false)
   const searchParams = useSearchParams()
   const showSearch = searchParams?.get("search") === "true"
+  const showDebug = searchParams?.get("debug") === "true" || process.env.NODE_ENV === "development"
 
   useEffect(() => {
     setIsClient(true)
@@ -38,7 +40,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 ml-16">
+      <main className="flex-1 md:ml-16 ml-0 pb-16 md:pb-0">
         {!user ? (
           <div className="max-w-md mx-auto px-4 py-12">
             <h1 className="text-3xl font-bold text-center mb-8">Reads.now</h1>
@@ -48,6 +50,7 @@ export default function Home() {
           <ContentFeed />
         )}
       </main>
+      {showDebug && <DebugPanel />}
     </div>
   )
 }

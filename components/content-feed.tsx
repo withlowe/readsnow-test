@@ -48,8 +48,19 @@ export function ContentFeed() {
   const sortWebsitesByContentChange = (sites: Website[]) => {
     return [...sites].sort((a, b) => {
       // Use contentChangedAt as the primary sort field if available
-      const dateA = new Date(a.contentChangedAt || a.updatedAt || a.createdAt).getTime()
-      const dateB = new Date(b.contentChangedAt || b.updatedAt || b.createdAt).getTime()
+      // Otherwise fall back to updatedAt or createdAt
+      const dateA = a.contentChangedAt
+        ? new Date(a.contentChangedAt).getTime()
+        : a.updatedAt
+          ? new Date(a.updatedAt).getTime()
+          : new Date(a.createdAt).getTime()
+
+      const dateB = b.contentChangedAt
+        ? new Date(b.contentChangedAt).getTime()
+        : b.updatedAt
+          ? new Date(b.updatedAt).getTime()
+          : new Date(b.createdAt).getTime()
+
       return dateB - dateA
     })
   }
@@ -69,6 +80,16 @@ export function ContentFeed() {
           // Sort by content change date, newest first
           const sortedItems = sortWebsitesByContentChange(websiteItems)
 
+          console.log(
+            "Sorted websites:",
+            sortedItems.map((site) => ({
+              title: site.title,
+              contentChangedAt: site.contentChangedAt,
+              updatedAt: site.updatedAt,
+              createdAt: site.createdAt,
+            })),
+          )
+
           setWebsites(sortedItems)
           setIsLoading(false)
         },
@@ -76,7 +97,6 @@ export function ContentFeed() {
     } catch (error: any) {
       console.error("Error opening database:", error)
       toast({
-        variant: "destructive",
         title: "Error loading websites",
         description: error.message || "Something went wrong",
       })
@@ -95,7 +115,6 @@ export function ContentFeed() {
 
       toast({
         title: "Website removed",
-        description: "The website has been removed from your feed",
       })
     } catch (error: any) {
       toast({
@@ -118,7 +137,6 @@ export function ContentFeed() {
 
       toast({
         title: "Website updated",
-        description: "The website has been updated",
       })
     } catch (error: any) {
       toast({
@@ -135,7 +153,6 @@ export function ContentFeed() {
     setIsRefreshing(true)
     toast({
       title: "Refreshing websites",
-      description: "Checking for content updates...",
     })
 
     let updatedCount = 0
@@ -229,11 +246,7 @@ export function ContentFeed() {
     setIsRefreshing(false)
 
     toast({
-      title: updatedCount > 0 ? "Websites refreshed" : "No updates found",
-      description:
-        updatedCount > 0
-          ? `Found updates for ${updatedCount} website${updatedCount === 1 ? "" : "s"}`
-          : "All websites are up to date",
+      title: updatedCount > 0 ? `Updated ${updatedCount} website${updatedCount === 1 ? "" : "s"}` : "No updates found",
     })
   }
 
@@ -262,7 +275,7 @@ export function ContentFeed() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div className="flex items-center">
           <img src="/logo.png" alt="Reads.now" className="h-8 mr-2" />
           <h1 className="text-xl font-bold">Reads.now</h1>
