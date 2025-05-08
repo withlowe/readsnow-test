@@ -66,10 +66,18 @@ export function WebsiteItem({ website, onDelete, onUpdate, compact = false }: We
     return website.mainContent || ""
   }
 
+  // Get the latest post title from RSS feed
+  const getLatestPostTitle = () => {
+    if (website.feedItems && website.feedItems.length > 0) {
+      return website.feedItems[0].title
+    }
+    return null
+  }
+
   const handleClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking on buttons
     if ((e.target as HTMLElement).closest("button")) {
-      e.preventDefault()
+      e.stopPropagation()
       return
     }
 
@@ -83,11 +91,8 @@ export function WebsiteItem({ website, onDelete, onUpdate, compact = false }: We
 
     // Only navigate if we have a valid URL
     if (url) {
-      // Use window.open to open in a new tab
+      // Open in a new tab
       window.open(url, "_blank", "noopener,noreferrer")
-
-      // Prevent default to avoid any navigation in the current tab
-      e.preventDefault()
     }
   }
 
@@ -95,15 +100,15 @@ export function WebsiteItem({ website, onDelete, onUpdate, compact = false }: We
   if (compact) {
     return (
       <div
-        className="py-2 flex items-center justify-between border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900"
+        className="py-3 flex items-center justify-between border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900"
         onClick={handleClick}
       >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center">
-            {website.isRssFeed && <Rss className="h-3 w-3 mr-1 text-orange-500" />}
-            <span className="font-medium truncate">{website.title}</span>
+        <div className="flex-1 min-w-0 mr-2 max-w-[calc(100%-40px)]">
+          <div className="flex items-center overflow-hidden">
+            {website.isRssFeed && <Rss className="h-5 w-5 mr-1 flex-shrink-0 text-orange-500" />}
+            <span className="font-medium truncate text-sm">{website.title}</span>
           </div>
-          <div className="text-xs text-muted-foreground truncate">{hostname}</div>
+          <div className="text-xs font-mono text-muted-foreground truncate">{hostname}</div>
         </div>
         <Button
           variant="ghost"
@@ -112,36 +117,44 @@ export function WebsiteItem({ website, onDelete, onUpdate, compact = false }: We
             e.stopPropagation()
             onDelete()
           }}
-          className="ml-2"
+          className="flex-shrink-0 ml-auto"
+          aria-label="Delete"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-5 w-5" />
           <span className="sr-only">Delete</span>
         </Button>
       </div>
     )
   }
 
+  const latestPostTitle = getLatestPostTitle()
+
   return (
     <article
       className="border-b pb-6 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 p-2 rounded-md transition-colors"
       onClick={handleClick}
     >
-      <div className="flex items-center text-sm text-muted-foreground mb-2">
+      <div className="flex items-center text-sm font-mono text-muted-foreground mb-2">
         <span className="font-medium text-foreground flex items-center">
-          {website.isRssFeed && <Rss className="h-3 w-3 mr-1 text-orange-500" />}
+          {website.isRssFeed && <Rss className="h-5 w-5 mr-1 text-orange-500" />}
           {hostname}
         </span>
       </div>
 
       <h2 className="text-xl font-semibold mb-2 group-hover:underline">{website.title}</h2>
 
-      {website.isRssFeed && website.feedItems && website.feedItems.length > 0 ? (
-        <div className="space-y-3 mt-3">
-          {website.feedItems.map((item, index) => (
-            <div key={index} className="border-l-2 border-primary/20 pl-3">
-              <h3 className="font-medium">{item.title}</h3>
+      {website.isRssFeed && latestPostTitle ? (
+        <div className="mt-3">
+          <h3 className="font-bold text-lg">Latest: {latestPostTitle}</h3>
+          {website.feedItems && website.feedItems.length > 1 && (
+            <div className="space-y-2 mt-2">
+              {website.feedItems.slice(1, 3).map((item, index) => (
+                <div key={index} className="border-l-2 border-primary/20 pl-3">
+                  <p className="font-medium">{item.title}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       ) : (
         <div className="prose prose-sm dark:prose-invert max-w-none">

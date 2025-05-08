@@ -7,6 +7,7 @@ import { ContentFeed } from "@/components/content-feed"
 import { Sidebar } from "@/components/sidebar"
 import { useUserbase } from "@/components/userbase-provider"
 import { DebugPanel } from "@/components/debug-panel"
+import { EnvDebug } from "@/components/env-debug"
 
 export default function Home() {
   const { user, loading } = useUserbase()
@@ -51,6 +52,7 @@ export default function Home() {
         )}
       </main>
       {showDebug && <DebugPanel />}
+      <EnvDebug />
     </div>
   )
 }

@@ -40,19 +40,19 @@ export function BookmarkList({ websites, onDelete, onUpdate }: BookmarkListProps
   })
 
   return (
-    <div>
+    <div className="w-full">
       <Input
-        placeholder="Search bookmarks..."
+        placeholder="Search subscribed sites..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         className="mb-4"
       />
 
-      <div className="max-h-[600px] overflow-y-auto">
+      <div className="max-h-[calc(100vh-220px)] overflow-y-auto w-full">
         {filteredWebsites.length === 0 ? (
-          <p className="text-center py-4 text-muted-foreground">No bookmarks found</p>
+          <p className="text-center py-4 text-muted-foreground">No subscribed sites found</p>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y w-full">
             {filteredWebsites.map((website) => (
               <WebsiteItem
                 key={website.itemId}

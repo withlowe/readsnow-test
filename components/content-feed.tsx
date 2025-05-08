@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useUserbase } from "@/components/userbase-provider"
 import { WebsiteItem } from "@/components/website-item"
 import { Button } from "@/components/ui/button"
@@ -37,31 +37,69 @@ export function ContentFeed() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const lastRefreshTimeRef = useRef<number>(Date.now())
 
   useEffect(() => {
     if (userbase) {
       initDatabase()
     }
+
+    // Cleanup function
+    return () => {
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current)
+      }
+    }
   }, [userbase])
 
-  // Function to sort websites by most recent content change
+  // Set up auto-refresh
+  useEffect(() => {
+    if (autoRefresh && !autoRefreshIntervalRef.current) {
+      // Check for updates every 5 minutes
+      autoRefreshIntervalRef.current = setInterval(() => {
+        // Only refresh if it's been at least 5 minutes since the last refresh
+        const now = Date.now()
+        if (now - lastRefreshTimeRef.current >= 5 * 60 * 1000) {
+          console.log("Auto-refreshing feed...")
+          refreshWebsites(true) // true = silent refresh
+          lastRefreshTimeRef.current = now
+        }
+      }, 60 * 1000) // Check every minute, but only refresh if 5 minutes have passed
+    } else if (!autoRefresh && autoRefreshIntervalRef.current) {
+      clearInterval(autoRefreshIntervalRef.current)
+      autoRefreshIntervalRef.current = null
+    }
+
+    return () => {
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current)
+      }
+    }
+  }, [autoRefresh])
+
+  // Function to sort websites by most recent external content change
   const sortWebsitesByContentChange = (sites: Website[]) => {
     return [...sites].sort((a, b) => {
-      // Use contentChangedAt as the primary sort field if available
-      // Otherwise fall back to updatedAt or createdAt
-      const dateA = a.contentChangedAt
-        ? new Date(a.contentChangedAt).getTime()
-        : a.updatedAt
-          ? new Date(a.updatedAt).getTime()
-          : new Date(a.createdAt).getTime()
+      // Prioritize sites with contentChangedAt (external updates)
+      const aDate = a.contentChangedAt ? new Date(a.contentChangedAt).getTime() : 0
+      const bDate = b.contentChangedAt ? new Date(b.contentChangedAt).getTime() : 0
 
-      const dateB = b.contentChangedAt
-        ? new Date(b.contentChangedAt).getTime()
-        : b.updatedAt
-          ? new Date(b.updatedAt).getTime()
-          : new Date(b.createdAt).getTime()
+      // If both have contentChangedAt, sort by that date
+      if (aDate && bDate) {
+        return bDate - aDate
+      }
 
-      return dateB - dateA
+      // If only one has contentChangedAt, prioritize that one
+      if (aDate && !bDate) return -1
+      if (!aDate && bDate) return 1
+
+      // If neither has contentChangedAt, fall back to updatedAt or createdAt
+      const aFallbackDate = a.updatedAt ? new Date(a.updatedAt).getTime() : new Date(a.createdAt).getTime()
+      const bFallbackDate = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt).getTime()
+
+      return bFallbackDate - aFallbackDate
     })
   }
 
@@ -80,6 +118,7 @@ export function ContentFeed() {
           // Sort by content change date, newest first
           const sortedItems = sortWebsitesByContentChange(websiteItems)
 
+          // Debug log to check sorting
           console.log(
             "Sorted websites:",
             sortedItems.map((site) => ({
@@ -147,13 +186,15 @@ export function ContentFeed() {
     }
   }
 
-  const refreshWebsites = async () => {
+  const refreshWebsites = async (silent = false) => {
     if (!userbase || isRefreshing || websites.length === 0) return
 
     setIsRefreshing(true)
-    toast({
-      title: "Refreshing websites",
-    })
+    if (!silent) {
+      toast({
+        title: "Refreshing websites",
+      })
+    }
 
     let updatedCount = 0
 
@@ -209,7 +250,7 @@ export function ContentFeed() {
                 contentSnapshot: newContentSnapshot,
                 mainContent: websiteData.mainContent ? websiteData.mainContent.substring(0, 1000) : "",
                 updatedAt: now,
-                contentChangedAt: now, // Set content change timestamp
+                contentChangedAt: now, // Set content change timestamp for external updates
                 contentChanged: true, // Mark as having changed content
                 lastChecked: now,
                 feedItems: feedItems,
@@ -219,12 +260,13 @@ export function ContentFeed() {
             updatedCount++
             return { website, updated: true }
           } else {
-            // Update just the lastChecked timestamp
+            // Update just the lastChecked timestamp without changing contentChangedAt
             await userbase.updateItem({
               databaseName: "websites",
               itemId: website.itemId,
               item: {
                 lastChecked: new Date().toISOString(),
+                // Don't update contentChangedAt or updatedAt to preserve sorting
               },
             })
             return { website, updated: false }
@@ -239,15 +281,16 @@ export function ContentFeed() {
     }
 
     // After all updates, refresh the database to get the latest sorted items
-    if (updatedCount > 0) {
-      await initDatabase()
-    }
-
     setIsRefreshing(false)
 
-    toast({
-      title: updatedCount > 0 ? `Updated ${updatedCount} website${updatedCount === 1 ? "" : "s"}` : "No updates found",
-    })
+    // Force refresh the database to get the latest sorted items
+    await initDatabase()
+
+    if (!silent && updatedCount > 0) {
+      toast({
+        title: `Updated ${updatedCount} website${updatedCount === 1 ? "" : "s"}`,
+      })
+    }
   }
 
   const filteredWebsites = websites.filter((website) => {
@@ -277,21 +320,20 @@ export function ContentFeed() {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div className="flex items-center">
-          <img src="/logo.png" alt="Reads.now" className="h-8 mr-2" />
           <h1 className="text-xl font-bold">Reads.now</h1>
         </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={refreshWebsites}
+            onClick={() => refreshWebsites(false)}
             disabled={isRefreshing || websites.length === 0}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-6 w-6 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>
           <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-6 w-6 mr-2" />
             Add Site
           </Button>
         </div>
@@ -313,7 +355,7 @@ export function ContentFeed() {
           {searchQuery ? "No websites match your search" : "You haven't added any websites yet. Add your first one!"}
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-8 max-h-[calc(100vh-220px)] overflow-y-auto pb-20">
           {filteredWebsites.map((website) => (
             <WebsiteItem
               key={website.itemId}
@@ -336,6 +378,19 @@ export function ContentFeed() {
           }
         }}
       />
+
+      <div className="fixed bottom-4 right-4 flex items-center space-x-2">
+        <div className="text-xs text-muted-foreground">{autoRefresh ? "Auto-refresh on" : "Auto-refresh off"}</div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setAutoRefresh(!autoRefresh)}
+          className="rounded-full h-8 w-8 p-0"
+        >
+          <RefreshCw className={`h-4 w-4 ${autoRefresh ? "text-green-500" : "text-muted-foreground"}`} />
+          <span className="sr-only">{autoRefresh ? "Disable auto-refresh" : "Enable auto-refresh"}</span>
+        </Button>
+      </div>
     </div>
   )
 }

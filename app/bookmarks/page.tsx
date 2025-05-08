@@ -83,7 +83,6 @@ export default function BookmarksPage() {
 
       toast({
         title: "Website removed",
-        description: "The website has been removed from your bookmarks",
       })
     } catch (error: any) {
       toast({
@@ -106,7 +105,6 @@ export default function BookmarksPage() {
 
       toast({
         title: "Website updated",
-        description: "The website has been updated",
       })
     } catch (error: any) {
       toast({
@@ -131,16 +129,15 @@ export default function BookmarksPage() {
       <main className="flex-1 md:ml-16 ml-0 pb-16 md:pb-0">
         <div className="max-w-2xl mx-auto px-4 py-6">
           <div className="flex items-center mb-8">
-            <div className="flex items-center">
-              <img src="/logo.png" alt="Reads.now" className="h-8 mr-2" />
-              <h1 className="text-xl font-bold">Your Bookmarks</h1>
-            </div>
+            <h1 className="text-xl font-bold">Subscribed</h1>
           </div>
 
           {isLoading ? (
-            <div className="text-center py-8">Loading your bookmarks...</div>
+            <div className="text-center py-8">Loading your saved sites...</div>
           ) : (
-            <BookmarkList websites={websites} onDelete={handleDelete} onUpdate={handleUpdate} />
+            <div className="max-h-[calc(100vh-180px)] overflow-y-auto pb-20 w-full">
+              <BookmarkList websites={websites} onDelete={handleDelete} onUpdate={handleUpdate} />
+            </div>
           )}
         </div>
       </main>

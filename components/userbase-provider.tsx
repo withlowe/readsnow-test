@@ -45,13 +45,15 @@ export function UserbaseProvider({ children }: { children: React.ReactNode }) {
     setError(null)
 
     try {
+      // Make sure we're using the correct environment variable
       const appId = process.env.NEXT_PUBLIC_USERBASE_APP_ID
 
       if (!appId) {
+        console.error("Userbase App ID is not defined in environment variables")
         throw new Error("Userbase App ID is not defined. Please check your environment variables.")
       }
 
-      console.log("Initializing Userbase with App ID:", appId)
+      console.log("Initializing Userbase with App ID:", appId.substring(0, 5) + "...")
 
       const session = await userbaseInstance.init({
         appId,
